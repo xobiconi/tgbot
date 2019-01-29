@@ -9,7 +9,7 @@ from telegram.utils.helpers import mention_markdown, mention_html, escape_markdo
 
 import tg_bot.modules.sql.welcome_sql as sql
 from tg_bot import dispatcher, OWNER_ID, LOGGER
-from tg_bot.modules.helper_funcs.chat_status import user_admin, can_delete
+from tg_bot.modules.helper_funcs.chat_status import user_admin
 from tg_bot.modules.helper_funcs.misc import build_keyboard, revert_buttons
 from tg_bot.modules.helper_funcs.msg_types import get_welcome_type
 from tg_bot.modules.helper_funcs.string_handling import markdown_parser, \
@@ -77,52 +77,6 @@ def send(update, message, keyboard, backup_message):
 
 
 @run_async
-@user_admin
-@loggable
-def del_joined(bot: Bot, update: Update, args: List[str]) -> str:
-    chat = update.effective_chat  # type: Optional[Chat]
-    user = update.effective_user  # type: Optional[User]
-
-    if not args:
-        del_pref = sql.get_del_pref(chat.id)
-        if del_pref:
-            update.effective_message.reply_text("നിലവിൽ user joined the chat മെസ്സേജുകൾ ഡിലീറ്റ് ചെയ്യുന്നുണ്ട്.")
-        else:
-            update.effective_message.reply_text("നിലവിൽ user joined the chat മെസ്സേജുകൾ ഡിലീറ്റ് ചെയ്യുന്നില്ല.")
-        return ""
-
-    if args[0].lower() in ("on", "yes"):
-        sql.set_del_joined(str(chat.id), True)
-        update.effective_message.reply_text("ശരി, user joined the chat മെസ്സേജുകൾ ഡിലീറ്റ് ചെയ്യാൻ ശ്രമിക്കാം!")
-        return "<b>{}:</b>" \
-               "\n#CLEAN_SERVICE_MESSAGE" \
-               "\n<b>Admin:</b> {}" \
-               "\nHas toggled join deletion to <code>ON</code>.".format(html.escape(chat.title),
-                                                                         mention_html(user.id, user.first_name))
-    elif args[0].lower() in ("off", "no"):
-        sql.set_del_joined(str(chat.id), False)
-        update.effective_message.reply_text("ശരി, user joined the chat മെസ്സേജുകൾ ഡിലീറ്റ് ചെയ്യുന്നില്ല!")
-        return "<b>{}:</b>" \
-               "\n#CLEAN_SERVICE_MESSAGE" \
-               "\n<b>Admin:</b> {}" \
-               "\nHas toggled joined deletion to <code>OFF</code>.".format(html.escape(chat.title),
-                                                                          mention_html(user.id, user.first_name))
-    else:
-        # idek what you're writing, say yes or no
-        update.effective_message.reply_text("എന്താണ് ചെയ്യേണ്ടത് എന്നു മനസ്സിലായില്ല... 'on/yes' അല്ലെങ്കിൽ 'off/no' എന്നു ചേർത്ത് അയക്കൂ.")
-        return ""
-
-
-@run_async
-def delete_join(bot: Bot, update: Update):
-    chat = update.effective_chat  # type: Optional[Chat]
-    join = update.effective_message.new_chat_members
-    if can_delete(chat, bot.id):
-        del_join = sql.get_del_pref(chat.id)
-        if del_join:
-            update.message.delete()
-
-@run_async
 def new_member(bot: Bot, update: Update):
     chat = update.effective_chat  # type: Optional[Chat]
 
@@ -133,7 +87,7 @@ def new_member(bot: Bot, update: Update):
         for new_mem in new_members:
             # Give the owner a special welcome
             if new_mem.id == OWNER_ID:
-                update.effective_message.reply_text("എടാ ദാസാ, ഏതാ ഈ അലവലാതി?")
+                update.effective_message.reply_text("Master is in the houseeee, let's get this party started!")
                 continue
 
             # Don't welcome yourself
@@ -154,7 +108,7 @@ def new_member(bot: Bot, update: Update):
                     else:
                         fullname = first_name
                     count = chat.get_members_count()
-                    mention = mention_markdown(new_mem.id, escape_markdown(first_name))
+                    mention = mention_markdown(new_mem.id, first_name)
                     if new_mem.username:
                         username = "@" + escape_markdown(new_mem.username)
                     else:
@@ -175,7 +129,6 @@ def new_member(bot: Bot, update: Update):
 
                 sent = send(update, res, keyboard,
                             sql.DEFAULT_WELCOME.format(first=first_name))  # type: Optional[Message]
-            delete_join(bot, update)
 
         prev_welc = sql.get_clean_pref(chat.id)
         if prev_welc:
@@ -237,7 +190,6 @@ def left_member(bot: Bot, update: Update):
             keyboard = InlineKeyboardMarkup(keyb)
 
             send(update, res, keyboard, sql.DEFAULT_GOODBYE)
-            delete_join(bot, update)
 
 
 @run_async
@@ -275,15 +227,15 @@ def welcome(bot: Bot, update: Update, args: List[str]):
     elif len(args) >= 1:
         if args[0].lower() in ("on", "yes"):
             sql.set_welc_preference(str(chat.id), True)
-            update.effective_message.reply_text("ഞാൻ വളരെ മാന്യമായിരിക്കും!")
+            update.effective_message.reply_text("I'll be polite!")
 
         elif args[0].lower() in ("off", "no"):
             sql.set_welc_preference(str(chat.id), False)
-            update.effective_message.reply_text("ഇനി എനിക്ക് നമസ്കാരം പറയേണ്ടാ ..")
+            update.effective_message.reply_text("I'm sulking, not saying hello anymore.")
 
         else:
             # idek what you're writing, say yes or no
-            update.effective_message.reply_text("എന്താണ് ചെയ്യേണ്ടത് എന്നു മനസ്സിലായില്ല... 'on/yes' അല്ലെങ്കിൽ 'off/no' എന്നു ചേർത്ത് അയക്കൂ.")
+            update.effective_message.reply_text("I understand 'on/yes' or 'off/no' only!")
 
 
 @run_async
@@ -321,15 +273,15 @@ def goodbye(bot: Bot, update: Update, args: List[str]):
     elif len(args) >= 1:
         if args[0].lower() in ("on", "yes"):
             sql.set_gdbye_preference(str(chat.id), True)
-            update.effective_message.reply_text("ആളുകൾ വിട്ടുപോകുമ്പോൾ ഞാൻ ക്ഷമ ചോദിക്കും!")
+            update.effective_message.reply_text("I'll be sorry when people leave!")
 
         elif args[0].lower() in ("off", "no"):
             sql.set_gdbye_preference(str(chat.id), False)
-            update.effective_message.reply_text("അവർ മരിച്ചതായി ഞാനും ഞാൻ മരിച്ചതായി അവറും വിചാരിച്ചോട്ടെ")
+            update.effective_message.reply_text("They leave, they're dead to me.")
 
         else:
             # idek what you're writing, say yes or no
-            update.effective_message.reply_text("എന്താണ് ചെയ്യേണ്ടത് എന്നു മനസ്സിലായില്ല... 'on/yes' അല്ലെങ്കിൽ 'off/no' എന്നു ചേർത്ത് അയക്കൂ.")
+            update.effective_message.reply_text("I understand 'on/yes' or 'off/no' only!")
 
 
 @run_async
@@ -343,11 +295,11 @@ def set_welcome(bot: Bot, update: Update) -> str:
     text, data_type, content, buttons = get_welcome_type(msg)
 
     if data_type is None:
-        msg.reply_text("എന്ത് മറുപടി ആണ് പറയേണ്ടത് എന്ന് നിങ്ങൾ വ്യക്തമാക്കിയില്ല.")
+        msg.reply_text("You didn't specify what to reply with!")
         return ""
 
     sql.set_custom_welcome(chat.id, content or text, data_type, buttons)
-    msg.reply_text("ഇഷ്ടാനുസൃത സ്വാഗത സന്ദേശം വിജയകരമായി സജ്ജീകരിച്ചു!")
+    msg.reply_text("Successfully set custom welcome message!")
 
     return "<b>{}:</b>" \
            "\n#SET_WELCOME" \
@@ -363,7 +315,7 @@ def reset_welcome(bot: Bot, update: Update) -> str:
     chat = update.effective_chat  # type: Optional[Chat]
     user = update.effective_user  # type: Optional[User]
     sql.set_custom_welcome(chat.id, sql.DEFAULT_WELCOME, sql.Types.TEXT)
-    update.effective_message.reply_text("സ്വാഗത സന്ദേശങ്ങൾ സ്വപ്രേരിതമായി പുനഃസജ്ജമാക്കി!")
+    update.effective_message.reply_text("Successfully reset welcome message to default!")
     return "<b>{}:</b>" \
            "\n#RESET_WELCOME" \
            "\n<b>Admin:</b> {}" \
@@ -441,7 +393,7 @@ def clean_welcome(bot: Bot, update: Update, args: List[str]) -> str:
                                                                           mention_html(user.id, user.first_name))
     else:
         # idek what you're writing, say yes or no
-        update.effective_message.reply_text("എന്താണ് ചെയ്യേണ്ടത് എന്നു മനസ്സിലായില്ല... 'on/yes' അല്ലെങ്കിൽ 'off/no' എന്നു ചേർത്ത് അയക്കൂ.")
+        update.effective_message.reply_text("I understand 'on/yes' or 'off/no' only!")
         return ""
 
 
@@ -512,12 +464,11 @@ __help__ = """
  - /resetwelcome: reset to the default welcome message.
  - /resetgoodbye: reset to the default goodbye message.
  - /cleanwelcome <on/off>: On new member, try to delete the previous welcome message to avoid spamming the chat.
- - /rmjoin <on/off>: when someone joins, try to delete the *user* joined the group message.
- - /welcomehelp: view more formatting information for custom welcome/goodbye messages.
 
+ - /welcomehelp: view more formatting information for custom welcome/goodbye messages.
 """.format(WELC_HELP_TXT)
 
-__mod_name__ = "സ്വാഗതം/വിട പറയൽ"
+__mod_name__ = "Welcomes/Goodbyes"
 
 NEW_MEM_HANDLER = MessageHandler(Filters.status_update.new_chat_members, new_member)
 LEFT_MEM_HANDLER = MessageHandler(Filters.status_update.left_chat_member, left_member)
@@ -528,9 +479,7 @@ SET_GOODBYE = CommandHandler("setgoodbye", set_goodbye, filters=Filters.group)
 RESET_WELCOME = CommandHandler("resetwelcome", reset_welcome, filters=Filters.group)
 RESET_GOODBYE = CommandHandler("resetgoodbye", reset_goodbye, filters=Filters.group)
 CLEAN_WELCOME = CommandHandler("cleanwelcome", clean_welcome, pass_args=True, filters=Filters.group)
-DEL_JOINED = CommandHandler("rmjoin", del_joined, pass_args=True, filters=Filters.group)
 WELCOME_HELP = CommandHandler("welcomehelp", welcome_help)
-
 
 dispatcher.add_handler(NEW_MEM_HANDLER)
 dispatcher.add_handler(LEFT_MEM_HANDLER)
@@ -541,5 +490,4 @@ dispatcher.add_handler(SET_GOODBYE)
 dispatcher.add_handler(RESET_WELCOME)
 dispatcher.add_handler(RESET_GOODBYE)
 dispatcher.add_handler(CLEAN_WELCOME)
-dispatcher.add_handler(DEL_JOINED)
 dispatcher.add_handler(WELCOME_HELP)
